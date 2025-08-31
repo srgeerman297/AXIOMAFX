@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AXIOMA FX Comparator</title>
 
-  <!-- PWA bits (use plain relative paths; no leading / or ./) -->
+  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0A4FB4">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20,136 +20,140 @@
   <script crossorigin src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js"></script>
 
   <style>
-    :root{ --ax-primary:#0A4FB4; --ax-primary-dark:#093F8C; --ax-primary-50:#E8F1FF; --ax-primary-200:#CFE0FF; }
-    .btn-primary{ background:var(--ax-primary); color:#fff; } .btn-primary:hover{ background:var(--ax-primary-dark); }
-    .btn-outline{ background:#fff; border:1px solid var(--ax-primary); color:var(--ax-primary); } .btn-outline:hover{ background:var(--ax-primary-50); }
-    .card{ border:1px solid var(--ax-primary-200); } .accent{ color:var(--ax-primary); } .accent-dark{ color:var(--ax-primary-dark); }
-    .accent-bg{ background:var(--ax-primary-50); } .accent-border{ border-color:var(--ax-primary-200); }
+    :root{ --ax:#0A4FB4; --ax50:#E8F1FF; --ax200:#CFE0FF; }
+    body{ background:#f8fafc; color:#0f172a; }
+    .card{ border:1px solid var(--ax200); border-radius:1rem; background:#fff; }
   </style>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-900">
-  <div id="root"></div>
-  <pre id="debug" class="m-4 p-3 text-xs bg-white border rounded-xl text-slate-700 hidden"></pre>
+<body>
+  <noscript>
+    <div style="padding:16px;margin:16px;border:1px solid #ccc;border-radius:12px;background:#fff">
+      This app needs JavaScript enabled.
+    </div>
+  </noscript>
+
+  <div id="root" class="p-4 max-w-5xl mx-auto"></div>
+  <pre id="fatal" class="hidden m-4 p-3 text-xs card text-rose-700"></pre>
 
   <script>
   (function(){
-    const {useState,useEffect,useMemo}=React; const html=htm.bind(React.createElement);
-    const AWG_PEG=1.79, STORAGE_KEY="axioma_fx_vertical_state_ghpages";
-    function parseNum(v){v=Number(v);return isFinite(v)?v:0;}
-    function fmt(n,c){try{return new Intl.NumberFormat(undefined,{style:"currency",currency:c||"AWG"}).format(Number(n)||0);}catch(e){return (Number(n)||0).toFixed(2);}}
-    function newId(){try{if(crypto.randomUUID) return crypto.randomUUID();}catch(e){} return "id_"+Math.random().toString(36).slice(2)+Date.now();}
-    function defaultItem(){return {id:newId(),name:"",arubaPriceAwg:0,arubaExtraAwg:0,arubaTaxPct:0,surinamePriceSrd:0,surinameExtraSrd:0,surinameTaxPct:0,amazonPriceUsd:0,amazonShippingUsd:0,amazonTaxPct:0};}
+    // bind HTM
+    const html = htm.bind(React.createElement);
+    const { useState, useEffect, useMemo } = React;
 
+    // tiny helpers
+    const AWG_PEG = 1.79;
+    const parseNum = v => (isFinite(+v) ? +v : 0);
+    const fmt = (n,c="AWG") => {
+      try { return new Intl.NumberFormat(undefined,{style:"currency",currency:c}).format(+n||0); }
+      catch { return (+n||0).toFixed(2); }
+    };
+
+    // component
     function App(){
-      const [awg,setAwg]=useState(AWG_PEG), [srd,setSrd]=useState(0);
-      const [fxError,setFxError]=useState(""); const [fxStatus,setFxStatus]=useState({updatedAt:null,source:null,sourceDate:null,error:null});
-      const [preferredProvider,setPreferredProvider]=useState("open.er-api");
-      const [manual,setManual]=useState({enabled:false,AWG:AWG_PEG,SRD:0});
-      const [items,setItems]=useState([{id:newId(),name:"Apple AirPods Max",arubaPriceAwg:1369,arubaExtraAwg:0,arubaTaxPct:0,surinamePriceSrd:21725,surinameExtraSrd:0,surinameTaxPct:0,amazonPriceUsd:479.99,amazonShippingUsd:100,amazonTaxPct:0}, defaultItem()]);
+      const [awg,setAwg] = useState(AWG_PEG);
+      const [srd,setSrd] = useState(0);
+      const [fxErr,setFxErr] = useState("");
 
-      useEffect(function(){try{var raw=localStorage.getItem(STORAGE_KEY); if(raw){var s=JSON.parse(raw);
-        if(Array.isArray(s.items)) setItems(s.items); if(typeof s.awg==="number") setAwg(s.awg); if(typeof s.srd==="number") setSrd(s.srd);
-        if(s.fxStatus) setFxStatus(s.fxStatus); if(s.preferredProvider) setPreferredProvider(s.preferredProvider); if(s.manual) setManual(s.manual);}}catch(e){}},[]);
-      useEffect(function(){try{localStorage.setItem(STORAGE_KEY, JSON.stringify({items,awg,srd,fxStatus,preferredProvider,manual}));}catch(e){}},[items,awg,srd,fxStatus,preferredProvider,manual]);
+      const usdToAwg = usd => usd * (awg || 0);
+      const srdToAwg = s  => s * (awg / (srd || 1));
 
-      const usdToAwg=(usd)=> usd*((manual.enabled?manual.AWG:awg)||0);
-      const srdToAwg=(s)=>{var usdToSrd=(manual.enabled?manual.SRD:srd)||0, usdToAwgRate=(manual.enabled?manual.AWG:awg)||0; if(!usdToSrd||!usdToAwgRate) return 0; return s*(usdToAwgRate/usdToSrd);};
-      function totalsFor(r){var aruba=(parseNum(r.arubaPriceAwg)+parseNum(r.arubaExtraAwg))*(1+parseNum(r.arubaTaxPct)/100);
-        var surinamePre=parseNum(r.surinamePriceSrd)+parseNum(r.surinameExtraSrd); var suriname=srdToAwg(surinamePre*(1+parseNum(r.surinameTaxPct)/100));
-        var amazonPre=parseNum(r.amazonPriceUsd)+parseNum(r.amazonShippingUsd); var amazon=usdToAwg(amazonPre*(1+parseNum(r.amazonTaxPct)/100));
-        var cand=[{k:"Aruba",v:aruba},{k:"Suriname",v:suriname},{k:"Amazon",v:amazon}].filter(c=>c.v>0);
-        var cheapest="—", s2=0, sh=0; if(cand.length){ var sorted=cand.slice().sort((a,b)=>a.v-b.v); cheapest=sorted[0].k; if(sorted.length>=2){ s2=sorted[1].v-sorted[0].v; sh=sorted[sorted.length-1].v-sorted[0].v; } }
-        return {aruba,suriname,amazon,cheapest,savingsToSecond:s2,savingsToHighest:sh};}
-      function update(id,p){setItems(arr=>arr.map(it=>it.id===id?Object.assign({},it,p):it));}
-      function addItem(){setItems(arr=>arr.concat([defaultItem()]));}
-      function removeItem(id){setItems(arr=>arr.filter(it=>it.id!==id));}
+      const [row,setRow] = useState({
+        name:"Apple AirPods Max",
+        arubaPriceAwg:1369, arubaExtraAwg:0, arubaTaxPct:0,
+        surinamePriceSrd:21725, surinameExtraSrd:0, surinameTaxPct:0,
+        amazonPriceUsd:479.99, amazonShippingUsd:100, amazonTaxPct:0
+      });
 
-      const PROVIDERS={"open.er-api":{name:"open.er-api.com",url:"https://open.er-api.com/v6/latest/USD",parse:(d)=>({SRD:d&&d.rates?d.rates.SRD:undefined,date:d&&d.time_last_update_utc?d.time_last_update_utc:null})},
-        "exchangerate.host":{name:"exchangerate.host",url:"https://api.exchangerate.host/latest?base=USD&symbols=SRD",parse:(d)=>({SRD:d&&d.rates?d.rates.SRD:undefined,date:d&&d.date?d.date:null})},
-        "currency-api":{name:"currency-api (jsDelivr)",url:"https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd/srd.json",parse:(d)=>({SRD:d?d.srd:undefined,date:d&&d.date?d.date:null})}};
+      function totals(){
+        const aruba = (parseNum(row.arubaPriceAwg)+parseNum(row.arubaExtraAwg))*(1+parseNum(row.arubaTaxPct)/100);
+        const suriPre = parseNum(row.surinamePriceSrd)+parseNum(row.surinameExtraSrd);
+        const suriname = srd ? srdToAwg(suriPre*(1+parseNum(row.surinameTaxPct)/100)) : 0;
+        const amaPre = parseNum(row.amazonPriceUsd)+parseNum(row.amazonShippingUsd);
+        const amazon = usdToAwg(amaPre*(1+parseNum(row.amazonTaxPct)/100));
+        const list = [{k:"Aruba",v:aruba},{k:"Suriname",v:suriname},{k:"Amazon",v:amazon}].filter(x=>x.v>0);
+        let cheapest="—", s2=0, sh=0;
+        if (list.length){
+          const sorted = list.slice().sort((a,b)=>a.v-b.v);
+          cheapest = sorted[0].k;
+          if (sorted.length>=2){ s2 = sorted[1].v - sorted[0].v; sh = sorted[sorted.length-1].v - sorted[0].v; }
+        }
+        return {aruba,suriname,amazon,cheapest,s2,sh};
+      }
 
-      async function refreshFX(){try{setFxError(""); if(manual.enabled||/^manual/.test(preferredProvider)){ setAwg(manual.AWG||AWG_PEG); setSrd(manual.SRD||0);
-          setFxStatus({updatedAt:new Date().toISOString(),source:preferredProvider,sourceDate:null,error:null}); return; }
-        var src=PROVIDERS[preferredProvider]; if(!src) throw new Error("Unknown provider: "+preferredProvider);
-        var res=await fetch(src.url,{cache:"no-store"}); if(!res.ok) throw new Error("HTTP "+res.status+" @ "+src.name);
-        var data=await res.json(); var p=src.parse(data)||{}; var SRDnum=Number(p.SRD); if(!isFinite(SRDnum)||SRDnum<=0) throw new Error("Missing SRD from "+src.name);
-        setAwg(AWG_PEG); setSrd(SRDnum); setFxStatus({updatedAt:new Date().toISOString(),source:src.name,sourceDate:p.date||null,error:null}); }catch(e){ setFxError(e&&e.message?e.message:String(e)); setFxStatus(s=>Object.assign({},s,{error:e&&e.message?e.message:String(e)})); }}
-      useEffect(function(){refreshFX();},[]);
+      async function refreshFX(){
+        try{
+          setFxErr("");
+          const res = await fetch("https://open.er-api.com/v6/latest/USD",{cache:"no-store"});
+          if(!res.ok) throw new Error("HTTP "+res.status);
+          const d = await res.json();
+          const SRD = +((d && d.rates && d.rates.SRD) || 0);
+          if(!isFinite(SRD) || SRD<=0) throw new Error("SRD missing");
+          setAwg(AWG_PEG); setSrd(SRD);
+        }catch(e){ setFxErr(String(e.message||e)); }
+      }
 
-      function exportCSV(){ var header=["Name","Aruba Price (AWG)","Aruba Extra (AWG)","Aruba Tax %","Suriname Price (SRD)","Suriname Extra (SRD)","Suriname Tax %","Amazon Price (USD)","Amazon Shipping (USD)","Amazon Tax %","Total Aruba (AWG)","Total Suriname (AWG)","Total Amazon (AWG)","Cheapest","Savings vs next-best (AWG)","Savings vs highest (AWG)"];
-        var rows=items.map(function(it){var t=totalsFor(it);return [it.name,it.arubaPriceAwg,it.arubaExtraAwg,it.arubaTaxPct,it.surinamePriceSrd,it.surinameExtraSrd,it.surinameTaxPct,it.amazonPriceUsd,it.amazonShippingUsd,it.amazonTaxPct,t.aruba.toFixed(2),t.suriname.toFixed(2),t.amazon.toFixed(2),t.cheapest,t.savingsToSecond.toFixed(2),t.savingsToHighest.toFixed(2)];});
-        var csv=[header].concat(rows).map(r=>r.map(v=> (typeof v==="string"&&v.indexOf(",")!==-1)?'"'+String(v).replace(/"/g,'""')+'"':v).join(",")).join("\r\n");
-        var blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}); var url=URL.createObjectURL(blob); var a=document.createElement("a"); a.href=url; a.download="fx_comparison_"+new Date().toISOString().slice(0,10)+".csv"; a.click(); URL.revokeObjectURL(url); }
+      useEffect(()=>{ refreshFX(); },[]);
 
-      const selfTests=useMemo(function(){var msgs=[],ok=true; function assert(c,m){if(!c){ok=false;msgs.push("❌ "+m);}else{msgs.push("✅ "+m);}}
-        var awgFromSrd=40*(1.79/40);assert(Math.abs(awgFromSrd-1.79)<1e-10,"SRD→AWG conversion"); var nl=["a,b","c,d"].join("\r\n"); assert(nl==="a,b\r\nc,d","CSV CRLF");
-        var q=['AC, Adapter',12].map(v=> (typeof v==="string"&&v.indexOf(",")!==-1)?'"'+v.replace(/"/g,'""')+'"':v).join(","); assert(q==='\"AC, Adapter\",12',"CSV quoting");
-        var prices=[10,12,15],sorted=prices.slice().sort((a,b)=>a-b); var s1=sorted[1]-sorted[0], s2=sorted[sorted.length-1]-sorted[0]; assert(Math.abs(s1-2)<1e-12,"Savings next-best"); assert(Math.abs(s2-5)<1e-12,"Savings highest");
-        return {passed:ok,messages:msgs};},[awg,srd]);
+      const t = totals();
 
-      return html`<div className="p-6 space-y-5 max-w-5xl mx-auto">
-        <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div><h1 className="text-2xl font-semibold accent">Live FX Price Comparator</h1><p className="text-sm text-slate-600">Vertical layout — no horizontal scrolling.</p></div>
-          <div className="flex flex-wrap gap-2"><button onClick=${refreshFX} className="px-3 py-2 rounded-xl shadow btn-primary">Refresh FX</button><button onClick=${addItem} className="px-3 py-2 rounded-xl shadow btn-outline">Add item</button><button onClick=${exportCSV} className="px-3 py-2 rounded-xl shadow btn-outline">Export CSV</button></div>
-        </header>
-        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="bg-white rounded-2xl border p-4 card">
-            <h2 className="font-medium accent">FX Rates (USD base)</h2>
-            <dl className="mt-2 text-sm grid grid-cols-2 gap-1"><dt className="text-slate-500">USD→AWG</dt><dd>${(manual.enabled?manual.AWG:awg).toFixed(4)}</dd><dt className="text-slate-500">USD→SRD</dt><dd>${(manual.enabled?manual.SRD:srd)?(manual.enabled?manual.SRD:srd).toFixed(4):"—"}</dd></dl>
-            <div className="mt-3 text-xs text-slate-500 space-y-1"><div>Updated: ${fxStatus.updatedAt?new Date(fxStatus.updatedAt).toLocaleString():"—"}</div><div>Source: ${fxStatus.source||"—"}</div><div>Source date: ${fxStatus.sourceDate||"—"}</div><div>AWG source: fixed peg ${AWG_PEG.toFixed(2)}</div>${fxError?html`<div className="text-rose-600">FX error: ${fxError}</div>`:null}</div>
-            <div className="mt-3 text-sm space-y-2">
-              <div><div className="text-slate-500 mb-1">SRD provider</div>
-                <select className="w-full px-3 py-2 border rounded-xl" value=${preferredProvider} onChange=${e=>setPreferredProvider(e.target.value)}>
-                  <option value="open.er-api">open.er-api.com</option><option value="exchangerate.host">exchangerate.host</option><option value="currency-api">currency-api (jsDelivr)</option><option value="manual-google">Manual (Google)</option><option value="manual-wise">Manual (Wise)</option><option value="manual">Manual (Custom)</option>
-                </select>
-              </div>
-              <label className="flex items-center gap-2"><input type="checkbox" className="size-4" checked=${manual.enabled} onChange=${e=>setManual(Object.assign({},manual,{enabled:e.target.checked}))}/><span>Use manual rates</span></label>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="space-y-1"><div className="text-xs text-slate-500">USD→AWG</div><input type="number" step="0.0001" value=${manual.AWG} onChange=${e=>setManual(Object.assign({},manual,{AWG:parseNum(e.target.value)}))} className="w-full px-3 py-2 border rounded-xl" /></label>
-                <label className="space-y-1"><div className="text-xs text-slate-500">USD→SRD</div><input type="number" step="0.0001" value=${manual.SRD} onChange=${e=>setManual(Object.assign({},manual,{SRD:parseNum(e.target.value)}))} className="w-full px-3 py-2 border rounded-xl" /></label>
-              </div>
+      return html`
+        <div class="space-y-4">
+          <header class="flex items-end justify-between">
+            <div>
+              <h1 class="text-2xl font-semibold" style="color:var(--ax)">Live FX Price Comparator</h1>
+              <p class="text-sm text-slate-600">GH Pages build (debug visible on errors).</p>
+            </div>
+            <button class="px-3 py-2 rounded-xl shadow text-white" style="background:var(--ax)"
+              onClick=${refreshFX}>Refresh FX</button>
+          </header>
+
+          <div class="card p-4">
+            <div class="text-sm grid grid-cols-2 gap-1">
+              <div class="text-slate-500">USD→AWG</div><div>${awg.toFixed(4)}</div>
+              <div class="text-slate-500">USD→SRD</div><div>${srd? srd.toFixed(4) : "—"}</div>
+            </div>
+            ${fxErr && html`<div class="mt-2 text-xs text-rose-600">FX error: ${fxErr}</div>`}
+          </div>
+
+          <div class="grid gap-2 sm:grid-cols-4">
+            <div class="card p-3"><div class="text-xs text-slate-600">Total Aruba (AWG)</div><div class="font-medium">${fmt(t.aruba)}</div></div>
+            <div class="card p-3"><div class="text-xs text-slate-600">Total Suriname (AWG)</div><div class="font-medium">${fmt(t.suriname)}</div></div>
+            <div class="card p-3"><div class="text-xs text-slate-600">Total Amazon (AWG)</div><div class="font-medium">${fmt(t.amazon)}</div></div>
+            <div class="card p-3">
+              <div class="text-xs">Decision</div>
+              <div class="font-medium" style="color:var(--ax)">${t.cheapest}</div>
+              <div class="text-xs text-slate-600">Saves ${fmt(t.s2)} vs next-best</div>
+              <div class="text-xs text-slate-600">Saves ${fmt(t.sh)} vs highest</div>
             </div>
           </div>
-        </section>
-        <section className="space-y-4">
-          ${items.map(function(row){var t=totalsFor(row); return html`<div key=${row.id} className="bg-white rounded-2xl border p-4 card">
-            <div className="flex items-center justify-between gap-3"><input className="w-full px-3 py-2 border rounded-xl text-base" placeholder="Item name" value=${row.name} onChange=${e=>update(row.id,{name:e.target.value})}/>
-              <button className="px-3 py-2 text-rose-600 border rounded-xl hover:bg-rose-50" onClick=${()=>removeItem(row.id)}>Remove</button></div>
-            <div className="mt-4"><h3 className="text-sm font-medium accent">Aruba (AWG)</h3><div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <label className="space-y-1"><div className="text-xs text-slate-500">Price (AWG)</div><input type="number" step="0.01" className="w-full px-3 py-2 border rounded-xl" value=${row.arubaPriceAwg} onChange=${e=>update(row.id,{arubaPriceAwg:parseNum(e.target.value)})}/></label>
-              <label className="space-y-1"><div className="text-xs text-slate-500">Extra (AWG)</div><input type="number" step="0.01" className="w-full px-3 py-2 border rounded-xl" value=${row.arubaExtraAwg} onChange=${e=>update(row.id,{arubaExtraAwg:parseNum(e.target.value)})}/></label>
-              <label className="space-y-1"><div className="text-xs text-slate-500">Tax %</div><input type="number" step="0.1" className="w-full px-3 py-2 border rounded-xl" value=${row.arubaTaxPct} onChange=${e=>update(row.id,{arubaTaxPct:parseNum(e.target.value)})}/></label>
-            </div></div>
-            <div className="mt-4"><h3 className="text-sm font-medium accent">Suriname (SRD)</h3><div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <label className="space-y-1"><div className="text-xs text-slate-500">Price (SRD)</div><input type="number" step="0.01" className="w-full px-3 py-2 border rounded-xl" value=${row.surinamePriceSrd} onChange=${e=>update(row.id,{surinamePriceSrd:parseNum(e.target.value)})}/></label>
-              <label className="space-y-1"><div className="text-xs text-slate-500">Extra (SRD)</div><input type="number" step="0.01" className="w-full px-3 py-2 border rounded-xl" value=${row.surinameExtraSrd} onChange=${e=>update(row.id,{surinameExtraSrd:parseNum(e.target.value)})}/></label>
-              <label className="space-y-1"><div className="text-xs text-slate-500">Tax %</div><input type="number" step="0.1" className="w-full px-3 py-2 border rounded-xl" value=${row.surinameTaxPct} onChange=${e=>update(row.id,{surinameTaxPct:parseNum(e.target.value)})}/></label>
-            </div></div>
-            <div className="mt-4"><h3 className="text-sm font-medium accent">Amazon (USD)</h3><div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <label className="space-y-1"><div className="text-xs text-slate-500">Price (USD)</div><input type="number" step="0.01" className="w-full px-3 py-2 border rounded-xl" value=${row.amazonPriceUsd} onChange=${e=>update(row.id,{amazonPriceUsd:parseNum(e.target.value)})}/></label>
-              <label className="space-y-1"><div className="text-xs text-slate-500">Shipping (USD)</div><input type="number" step="0.01" className="w-full px-3 py-2 border rounded-xl" value=${row.amazonShippingUsd} onChange=${e=>update(row.id,{amazonShippingUsd:parseNum(e.target.value)})}/></label>
-              <label className="space-y-1"><div className="text-xs text-slate-500">Tax %</div><input type="number" step="0.1" className="w-full px-3 py-2 border rounded-xl" value=${row.amazonTaxPct} onChange=${e=>update(row.id,{amazonTaxPct:parseNum(e.target.value)})}/></label>
-            </div></div>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-2 text-sm">
-              <div className="rounded-xl p-3 border accent-bg accent-border"><div className="text-xs text-slate-600">Total Aruba (AWG)</div><div className="font-medium accent-dark">${fmt(t.aruba,"AWG")}</div></div>
-              <div className="rounded-xl p-3 border accent-bg accent-border"><div className="text-xs text-slate-600">Total Suriname (AWG)</div><div className="font-medium accent-dark">${fmt(t.suriname,"AWG")}</div></div>
-              <div className="rounded-xl p-3 border accent-bg accent-border"><div className="text-xs text-slate-600">Total Amazon (AWG)</div><div className="font-medium accent-dark">${fmt(t.amazon,"AWG")}</div></div>
-              <div className="rounded-xl p-3 border accent-bg accent-border"><div className="text-xs">Decision</div><div className="font-medium accent">${t.cheapest}</div><div className="text-xs text-slate-600">Saves ${fmt(t.savingsToSecond,"AWG")} vs next-best</div><div className="text-xs text-slate-600">Saves ${fmt(t.savingsToHighest,"AWG")} vs highest</div></div>
-            </div>
-          </div>`)} )
-        </section>
-      </div>`;
+        </div>
+      `;
     }
-    try { ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App)); }
-    catch(e){ var dbg=document.getElementById("debug"); if(dbg){dbg.classList.remove("hidden"); dbg.textContent=String(e&&e.message?e.message:e);} console.error(e); }
+
+    // Render with visible fatal error fallback
+    try{
+      const rootEl = document.getElementById('root');
+      ReactDOM.createRoot(rootEl).render(React.createElement(App));
+    }catch(err){
+      const p = document.getElementById('fatal');
+      p.classList.remove('hidden');
+      p.textContent = 'Fatal render error: ' + (err && err.message ? err.message : String(err));
+      console.error(err);
+    }
   })();
   </script>
 
-  <!-- Register SW with plain relative path; iOS-safe. -->
+  <!-- Register SW (plain relative path) -->
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('sw.js').catch(function(e){ console.log('SW registration failed:', e); });
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function (e) {
+          console.log('SW registration failed:', e);
+          const p = document.getElementById('fatal');
+          p.classList.remove('hidden');
+          p.textContent = 'SW registration failed: ' + e;
+        });
       });
     }
   </script>
