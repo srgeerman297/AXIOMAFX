@@ -4,10 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AXIOMA FX Comparator</title>
+
+  <!-- PWA bits (use plain relative paths; no leading / or ./) -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0A4FB4">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="AXIOMA FX">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+
+  <!-- UI libs -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js"></script>
+
   <style>
     :root{ --ax-primary:#0A4FB4; --ax-primary-dark:#093F8C; --ax-primary-50:#E8F1FF; --ax-primary-200:#CFE0FF; }
     .btn-primary{ background:var(--ax-primary); color:#fff; } .btn-primary:hover{ background:var(--ax-primary-dark); }
@@ -15,31 +26,32 @@
     .card{ border:1px solid var(--ax-primary-200); } .accent{ color:var(--ax-primary); } .accent-dark{ color:var(--ax-primary-dark); }
     .accent-bg{ background:var(--ax-primary-50); } .accent-border{ border-color:var(--ax-primary-200); }
   </style>
-  <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#0A4FB4">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="AXIOMA FX Comparator">
-  <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png">
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900">
   <div id="root"></div>
+  <pre id="debug" class="m-4 p-3 text-xs bg-white border rounded-xl text-slate-700 hidden"></pre>
+
   <script>
   (function(){
     const {useState,useEffect,useMemo}=React; const html=htm.bind(React.createElement);
-    const AWG_PEG=1.79, STORAGE_KEY="axioma_fx_vertical_state_build2";
+    const AWG_PEG=1.79, STORAGE_KEY="axioma_fx_vertical_state_ghpages";
     function parseNum(v){v=Number(v);return isFinite(v)?v:0;}
     function fmt(n,c){try{return new Intl.NumberFormat(undefined,{style:"currency",currency:c||"AWG"}).format(Number(n)||0);}catch(e){return (Number(n)||0).toFixed(2);}}
     function newId(){try{if(crypto.randomUUID) return crypto.randomUUID();}catch(e){} return "id_"+Math.random().toString(36).slice(2)+Date.now();}
     function defaultItem(){return {id:newId(),name:"",arubaPriceAwg:0,arubaExtraAwg:0,arubaTaxPct:0,surinamePriceSrd:0,surinameExtraSrd:0,surinameTaxPct:0,amazonPriceUsd:0,amazonShippingUsd:0,amazonTaxPct:0};}
+
     function App(){
       const [awg,setAwg]=useState(AWG_PEG), [srd,setSrd]=useState(0);
       const [fxError,setFxError]=useState(""); const [fxStatus,setFxStatus]=useState({updatedAt:null,source:null,sourceDate:null,error:null});
-      const [preferredProvider,setPreferredProvider]=useState("open.er-api"); const [manual,setManual]=useState({enabled:false,AWG:AWG_PEG,SRD:0});
+      const [preferredProvider,setPreferredProvider]=useState("open.er-api");
+      const [manual,setManual]=useState({enabled:false,AWG:AWG_PEG,SRD:0});
       const [items,setItems]=useState([{id:newId(),name:"Apple AirPods Max",arubaPriceAwg:1369,arubaExtraAwg:0,arubaTaxPct:0,surinamePriceSrd:21725,surinameExtraSrd:0,surinameTaxPct:0,amazonPriceUsd:479.99,amazonShippingUsd:100,amazonTaxPct:0}, defaultItem()]);
-      useEffect(function(){try{var raw=localStorage.getItem(STORAGE_KEY); if(raw){var s=JSON.parse(raw); if(Array.isArray(s.items)) setItems(s.items); if(typeof s.awg==="number") setAwg(s.awg); if(typeof s.srd==="number") setSrd(s.srd); if(s.fxStatus) setFxStatus(s.fxStatus); if(s.preferredProvider) setPreferredProvider(s.preferredProvider); if(s.manual) setManual(s.manual);}}catch(e){}},[]);
+
+      useEffect(function(){try{var raw=localStorage.getItem(STORAGE_KEY); if(raw){var s=JSON.parse(raw);
+        if(Array.isArray(s.items)) setItems(s.items); if(typeof s.awg==="number") setAwg(s.awg); if(typeof s.srd==="number") setSrd(s.srd);
+        if(s.fxStatus) setFxStatus(s.fxStatus); if(s.preferredProvider) setPreferredProvider(s.preferredProvider); if(s.manual) setManual(s.manual);}}catch(e){}},[]);
       useEffect(function(){try{localStorage.setItem(STORAGE_KEY, JSON.stringify({items,awg,srd,fxStatus,preferredProvider,manual}));}catch(e){}},[items,awg,srd,fxStatus,preferredProvider,manual]);
+
       const usdToAwg=(usd)=> usd*((manual.enabled?manual.AWG:awg)||0);
       const srdToAwg=(s)=>{var usdToSrd=(manual.enabled?manual.SRD:srd)||0, usdToAwgRate=(manual.enabled?manual.AWG:awg)||0; if(!usdToSrd||!usdToAwgRate) return 0; return s*(usdToAwgRate/usdToSrd);};
       function totalsFor(r){var aruba=(parseNum(r.arubaPriceAwg)+parseNum(r.arubaExtraAwg))*(1+parseNum(r.arubaTaxPct)/100);
@@ -51,20 +63,30 @@
       function update(id,p){setItems(arr=>arr.map(it=>it.id===id?Object.assign({},it,p):it));}
       function addItem(){setItems(arr=>arr.concat([defaultItem()]));}
       function removeItem(id){setItems(arr=>arr.filter(it=>it.id!==id));}
+
       const PROVIDERS={"open.er-api":{name:"open.er-api.com",url:"https://open.er-api.com/v6/latest/USD",parse:(d)=>({SRD:d&&d.rates?d.rates.SRD:undefined,date:d&&d.time_last_update_utc?d.time_last_update_utc:null})},
         "exchangerate.host":{name:"exchangerate.host",url:"https://api.exchangerate.host/latest?base=USD&symbols=SRD",parse:(d)=>({SRD:d&&d.rates?d.rates.SRD:undefined,date:d&&d.date?d.date:null})},
         "currency-api":{name:"currency-api (jsDelivr)",url:"https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd/srd.json",parse:(d)=>({SRD:d?d.srd:undefined,date:d&&d.date?d.date:null})}};
-      async function refreshFX(){try{setFxError(""); if(manual.enabled||/^manual/.test(preferredProvider)){ setAwg(manual.AWG||AWG_PEG); setSrd(manual.SRD||0); setFxStatus({updatedAt:new Date().toISOString(),source:preferredProvider,sourceDate:null,error:null}); return; }
+
+      async function refreshFX(){try{setFxError(""); if(manual.enabled||/^manual/.test(preferredProvider)){ setAwg(manual.AWG||AWG_PEG); setSrd(manual.SRD||0);
+          setFxStatus({updatedAt:new Date().toISOString(),source:preferredProvider,sourceDate:null,error:null}); return; }
         var src=PROVIDERS[preferredProvider]; if(!src) throw new Error("Unknown provider: "+preferredProvider);
         var res=await fetch(src.url,{cache:"no-store"}); if(!res.ok) throw new Error("HTTP "+res.status+" @ "+src.name);
         var data=await res.json(); var p=src.parse(data)||{}; var SRDnum=Number(p.SRD); if(!isFinite(SRDnum)||SRDnum<=0) throw new Error("Missing SRD from "+src.name);
         setAwg(AWG_PEG); setSrd(SRDnum); setFxStatus({updatedAt:new Date().toISOString(),source:src.name,sourceDate:p.date||null,error:null}); }catch(e){ setFxError(e&&e.message?e.message:String(e)); setFxStatus(s=>Object.assign({},s,{error:e&&e.message?e.message:String(e)})); }}
       useEffect(function(){refreshFX();},[]);
+
       function exportCSV(){ var header=["Name","Aruba Price (AWG)","Aruba Extra (AWG)","Aruba Tax %","Suriname Price (SRD)","Suriname Extra (SRD)","Suriname Tax %","Amazon Price (USD)","Amazon Shipping (USD)","Amazon Tax %","Total Aruba (AWG)","Total Suriname (AWG)","Total Amazon (AWG)","Cheapest","Savings vs next-best (AWG)","Savings vs highest (AWG)"];
         var rows=items.map(function(it){var t=totalsFor(it);return [it.name,it.arubaPriceAwg,it.arubaExtraAwg,it.arubaTaxPct,it.surinamePriceSrd,it.surinameExtraSrd,it.surinameTaxPct,it.amazonPriceUsd,it.amazonShippingUsd,it.amazonTaxPct,t.aruba.toFixed(2),t.suriname.toFixed(2),t.amazon.toFixed(2),t.cheapest,t.savingsToSecond.toFixed(2),t.savingsToHighest.toFixed(2)];});
         var csv=[header].concat(rows).map(r=>r.map(v=> (typeof v==="string"&&v.indexOf(",")!==-1)?'"'+String(v).replace(/"/g,'""')+'"':v).join(",")).join("\r\n");
-        var blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}); var url=URL.createObjectURL(blob); var a=document.createElement("a"); a.href=url; a.download="fx_comparison_vertical_"+new Date().toISOString().slice(0,10)+".csv"; a.click(); URL.revokeObjectURL(url); }
-      const selfTests=useMemo(function(){var msgs=[],ok=true; function assert(c,m){if(!c){ok=false;msgs.push("❌ "+m);}else{msgs.push("✅ "+m);}} var awgFromSrd=40*(1.79/40);assert(Math.abs(awgFromSrd-1.79)<1e-10,"SRD→AWG conversion correct"); var nl=["a,b","c,d"].join("\r\n"); assert(nl==="a,b\r\nc,d","CSV uses CRLF"); var q=["AC, Adapter",12].map(v=> (typeof v==="string"&&v.indexOf(",")!==-1)?'"'+v.replace(/"/g,'""')+'"':v).join(","); assert(q==='"AC, Adapter",12',"CSV quoting commas"); var prices=[10,12,15],sorted=prices.slice().sort((a,b)=>a-b); var s1=sorted[1]-sorted[0], s2=sorted[sorted.length-1]-sorted[0]; assert(Math.abs(s1-2)<1e-12,"Savings vs next-best (12-10)=2 AWG"); assert(Math.abs(s2-5)<1e-12,"Savings vs highest (15-10)=5 AWG"); return {passed:ok,messages:msgs};},[awg,srd]);
+        var blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}); var url=URL.createObjectURL(blob); var a=document.createElement("a"); a.href=url; a.download="fx_comparison_"+new Date().toISOString().slice(0,10)+".csv"; a.click(); URL.revokeObjectURL(url); }
+
+      const selfTests=useMemo(function(){var msgs=[],ok=true; function assert(c,m){if(!c){ok=false;msgs.push("❌ "+m);}else{msgs.push("✅ "+m);}}
+        var awgFromSrd=40*(1.79/40);assert(Math.abs(awgFromSrd-1.79)<1e-10,"SRD→AWG conversion"); var nl=["a,b","c,d"].join("\r\n"); assert(nl==="a,b\r\nc,d","CSV CRLF");
+        var q=['AC, Adapter',12].map(v=> (typeof v==="string"&&v.indexOf(",")!==-1)?'"'+v.replace(/"/g,'""')+'"':v).join(","); assert(q==='\"AC, Adapter\",12',"CSV quoting");
+        var prices=[10,12,15],sorted=prices.slice().sort((a,b)=>a-b); var s1=sorted[1]-sorted[0], s2=sorted[sorted.length-1]-sorted[0]; assert(Math.abs(s1-2)<1e-12,"Savings next-best"); assert(Math.abs(s2-5)<1e-12,"Savings highest");
+        return {passed:ok,messages:msgs};},[awg,srd]);
+
       return html`<div className="p-6 space-y-5 max-w-5xl mx-auto">
         <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div><h1 className="text-2xl font-semibold accent">Live FX Price Comparator</h1><p className="text-sm text-slate-600">Vertical layout — no horizontal scrolling.</p></div>
@@ -114,19 +136,20 @@
               <div className="rounded-xl p-3 border accent-bg accent-border"><div className="text-xs text-slate-600">Total Amazon (AWG)</div><div className="font-medium accent-dark">${fmt(t.amazon,"AWG")}</div></div>
               <div className="rounded-xl p-3 border accent-bg accent-border"><div className="text-xs">Decision</div><div className="font-medium accent">${t.cheapest}</div><div className="text-xs text-slate-600">Saves ${fmt(t.savingsToSecond,"AWG")} vs next-best</div><div className="text-xs text-slate-600">Saves ${fmt(t.savingsToHighest,"AWG")} vs highest</div></div>
             </div>
-          </div>`)})
+          </div>`)} )
         </section>
-        <section className="text-xs text-slate-500"><h3 className="font-medium mt-2 accent">Self‑tests</h3><ul className="list-disc pl-5 mt-1 space-y-1">${/* just render pass/fail summary succinctly */""}</ul></section>
       </div>`;
     }
-    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+    try { ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App)); }
+    catch(e){ var dbg=document.getElementById("debug"); if(dbg){dbg.classList.remove("hidden"); dbg.textContent=String(e&&e.message?e.message:e);} console.error(e); }
   })();
   </script>
 
+  <!-- Register SW with plain relative path; iOS-safe. -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js').catch(function(e){ console.log('SW registration failed:', e); });
+        navigator.serviceWorker.register('sw.js').catch(function(e){ console.log('SW registration failed:', e); });
       });
     }
   </script>
