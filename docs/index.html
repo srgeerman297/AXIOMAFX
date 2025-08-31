@@ -6,56 +6,83 @@
   <title>AXIOMA FX Comparator</title>
   <meta name="theme-color" content="#0A4FB4" />
 
-  <!-- Manifest & icons (relative paths only) -->
+  <!-- PWA manifest and icons -->
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="icon" href="icons/icon-192.png" />
 
-  <!-- UI libs (no build step) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js"></script>
-
+  <!-- Minimal styling -->
   <style>
-    body { background:#f8fafc; color:#0f172a; }
-    .card { background:#fff; border:1px solid #cfe0ff; border-radius:1rem; }
+    :root{
+      --ax:#0A4FB4; --ax50:#E8F1FF; --border:#cfe0ff; --text:#0f172a; --muted:#475569;
+    }
+    html,body{height:100%}
+    body{
+      margin:0; background:#f8fafc; color:var(--text);
+      display:flex; align-items:center; justify-content:center; font-family:-apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      padding:24px;
+    }
+    .card{
+      background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; width:min(640px, 95vw);
+      box-shadow:0 1px 2px rgba(0,0,0,.04);
+      text-align:center;
+    }
+    h1{margin:0 0 8px 0; color:var(--ax); font-size:28px; line-height:1.2}
+    p{margin:6px 0; color:var(--muted)}
+    .note{background:var(--ax50); border:1px solid var(--border); padding:10px; border-radius:10px; font-size:14px}
+    .err{color:#b91c1c; font-size:12px; margin-top:10px; word-break:break-word}
+    .btn{
+      appearance:none; border:0; background:var(--ax); color:#fff; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600;
+    }
+    .btn:hover{background:#093F8C}
   </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-6">
-  <div id="root"></div>
-  <pre id="fatal" class="hidden card p-3 text-xs text-rose-700 mt-4"></pre>
+<body>
+  <main class="card" role="main" aria-live="polite">
+    <h1>AXIOMA FX Comparator</h1>
+    <p>PWA shell loaded successfully 🎉</p>
+    <p class="note">This is the lightweight, no-framework test page to verify GitHub Pages + iOS load. Your full app can be wired in after this works.</p>
+    <div style="margin-top:14px"><button class="btn" id="install">Add to Home Screen (iOS: use Share)</button></div>
+    <div id="status" class="err" hidden></div>
+  </main>
 
   <script>
     (function () {
-      const html = htm.bind(React.createElement);
-      function App() {
-        return html`<div class="card p-6 text-center">
-          <h1 class="text-2xl font-semibold" style="color:#0A4FB4">AXIOMA FX Comparator</h1>
-          <p class="mt-2 text-slate-700">PWA loaded successfully 🎉</p>
-        </div>`;
-      }
-      try {
-        ReactDOM.render(html`<${App}/>`, document.getElementById('root'));
-      } catch (e) {
-        const p = document.getElementById('fatal');
-        p.classList.remove('hidden');
-        p.textContent = 'Fatal render error: ' + (e.message || e);
-      }
-    })();
-  </script>
+      const status = document.getElementById('status');
+      function show(msg){ status.hidden=false; status.textContent=msg; }
 
-  <!-- Service worker registration -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js').catch(function (err) {
-          const p = document.getElementById('fatal');
-          p.classList.remove('hidden');
-          p.textContent = 'SW registration failed: ' + err;
-        });
+      if ('serviceWorker' in navigator) {
+        const isSecureOrigin =
+          location.protocol === 'https:' ||
+          location.hostname === 'localhost' ||
+          location.hostname.endsWith('.github.io');
+
+        if (isSecureOrigin) {
+          window.addEventListener('load', function () {
+            navigator.serviceWorker.register('sw.js')
+              .catch(function (err) { show('SW registration failed: ' + err); });
+          });
+        } else {
+          show('Running on insecure origin (' + location.protocol + '); Service Worker is disabled. Open the GitHub Pages URL.');
+        }
+      }
+
+      // Basic A2HS prompt (desktop/Android; on iOS use Safari → Share → Add to Home Screen)
+      let deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
       });
-    }
+      document.getElementById('install').addEventListener('click', async () => {
+        if (!deferredPrompt) {
+          show('On iPhone: use the Share button → Add to Home Screen.');
+          return;
+        }
+        deferredPrompt.prompt();
+        try { await deferredPrompt.userChoice; } catch(_) {}
+        deferredPrompt = null;
+      });
+    })();
   </script>
 </body>
 </html>
