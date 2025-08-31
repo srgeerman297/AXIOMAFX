@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AXIOMA FX Comparator</title>
+  <meta name="theme-color" content="#0A4FB4" />
+
+  <!-- Manifest & icons (relative paths only) -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" href="icons/icon-192.png" />
+
+  <!-- UI libs (no build step) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js"></script>
+
+  <style>
+    body { background:#f8fafc; color:#0f172a; }
+    .card { background:#fff; border:1px solid #cfe0ff; border-radius:1rem; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+  <div id="root"></div>
+  <pre id="fatal" class="hidden card p-3 text-xs text-rose-700 mt-4"></pre>
+
+  <script>
+    (function () {
+      const html = htm.bind(React.createElement);
+      function App() {
+        return html`<div class="card p-6 text-center">
+          <h1 class="text-2xl font-semibold" style="color:#0A4FB4">AXIOMA FX Comparator</h1>
+          <p class="mt-2 text-slate-700">PWA loaded successfully 🎉</p>
+        </div>`;
+      }
+      try {
+        ReactDOM.render(html`<${App}/>`, document.getElementById('root'));
+      } catch (e) {
+        const p = document.getElementById('fatal');
+        p.classList.remove('hidden');
+        p.textContent = 'Fatal render error: ' + (e.message || e);
+      }
+    })();
+  </script>
+
+  <!-- Service worker registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function (err) {
+          const p = document.getElementById('fatal');
+          p.classList.remove('hidden');
+          p.textContent = 'SW registration failed: ' + err;
+        });
+      });
+    }
+  </script>
+</body>
+</html>
