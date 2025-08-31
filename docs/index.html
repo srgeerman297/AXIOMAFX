@@ -1,88 +1,364 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AXIOMA FX Comparator</title>
-  <meta name="theme-color" content="#0A4FB4" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AXIOMA FX Comparator</title>
+<meta name="theme-color" content="#0A4FB4" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="icon" href="icons/icon-192.png" />
 
-  <!-- PWA manifest and icons -->
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="icon" href="icons/icon-192.png" />
-
-  <!-- Minimal styling -->
-  <style>
-    :root{
-      --ax:#0A4FB4; --ax50:#E8F1FF; --border:#cfe0ff; --text:#0f172a; --muted:#475569;
-    }
-    html,body{height:100%}
-    body{
-      margin:0; background:#f8fafc; color:var(--text);
-      display:flex; align-items:center; justify-content:center; font-family:-apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      padding:24px;
-    }
-    .card{
-      background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; width:min(640px, 95vw);
-      box-shadow:0 1px 2px rgba(0,0,0,.04);
-      text-align:center;
-    }
-    h1{margin:0 0 8px 0; color:var(--ax); font-size:28px; line-height:1.2}
-    p{margin:6px 0; color:var(--muted)}
-    .note{background:var(--ax50); border:1px solid var(--border); padding:10px; border-radius:10px; font-size:14px}
-    .err{color:#b91c1c; font-size:12px; margin-top:10px; word-break:break-word}
-    .btn{
-      appearance:none; border:0; background:var(--ax); color:#fff; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600;
-    }
-    .btn:hover{background:#093F8C}
-  </style>
+<style>
+  :root{
+    --ax:#0A4FB4; --ax-dark:#093F8C; --ax-50:#E8F1FF; --ax-200:#CFE0FF;
+    --text:#0f172a; --muted:#475569; --bg:#f8fafc; --card:#fff; --border:#e2e8f0;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .container{max-width:1100px;margin:0 auto;padding:24px}
+  h1{margin:0 0 6px;color:var(--ax);font-size:28px}
+  .sub{color:var(--muted);font-size:14px}
+  .row{display:flex;flex-wrap:wrap;gap:12px}
+  .card{background:var(--card);border:1px solid var(--ax-200);border-radius:16px;padding:16px}
+  .card h2{font-size:16px;margin:0 0 8px;color:var(--ax)}
+  .grid{display:grid;gap:8px}
+  .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+  label{font-size:12px;color:var(--muted);display:block;margin:0 0 4px}
+  input[type="text"],input[type="number"],select{
+    width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:#fff;font-size:14px
+  }
+  .btn{appearance:none;border:0;background:var(--ax);color:#fff;padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600}
+  .btn:hover{background:var(--ax-dark)}
+  .btn-outline{background:#fff;color:var(--ax);border:1px solid var(--ax)}
+  .btn-danger{background:#e11d48}
+  .pill{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid var(--ax-200);background:var(--ax-50);color:var(--ax);font-size:12px}
+  .muted{color:var(--muted);font-size:12px}
+  .totals{display:grid;gap:8px}
+  .totals > div{padding:10px;border:1px solid var(--ax-200);border-radius:12px;background:var(--ax-50)}
+  .decision{padding:12px;border:1px solid var(--ax-200);border-radius:12px;background:#fff}
+  .decision .title{font-weight:700;color:var(--ax)}
+  .decision .line{font-size:12px;color:var(--muted)}
+  .footer-note{margin-top:10px;font-size:12px;color:var(--muted)}
+  .spacer{flex:1}
+  .error{color:#b91c1c;font-size:12px}
+</style>
 </head>
 <body>
-  <main class="card" role="main" aria-live="polite">
-    <h1>AXIOMA FX Comparator</h1>
-    <p>PWA shell loaded successfully 🎉</p>
-    <p class="note">This is the lightweight, no-framework test page to verify GitHub Pages + iOS load. Your full app can be wired in after this works.</p>
-    <div style="margin-top:14px"><button class="btn" id="install">Add to Home Screen (iOS: use Share)</button></div>
-    <div id="status" class="err" hidden></div>
-  </main>
+<div class="container">
 
-  <script>
-    (function () {
-      const status = document.getElementById('status');
-      function show(msg){ status.hidden=false; status.textContent=msg; }
+  <header class="row" style="align-items:end;justify-content:space-between">
+    <div>
+      <h1>AXIOMA FX Comparator</h1>
+      <div class="sub">Compare Aruba (AWG), Suriname (SRD), and Amazon (USD)&nbsp;— all totals in AWG.</div>
+    </div>
+    <div class="row">
+      <button id="btnRefresh" class="btn">Refresh FX</button>
+      <button id="btnAdd" class="btn btn-outline">Add item</button>
+      <button id="btnCSV" class="btn btn-outline">Export CSV</button>
+    </div>
+  </header>
 
-      if ('serviceWorker' in navigator) {
-        const isSecureOrigin =
-          location.protocol === 'https:' ||
-          location.hostname === 'localhost' ||
-          location.hostname.endsWith('.github.io');
+  <!-- FX panel -->
+  <section class="card" style="margin-top:14px">
+    <h2>FX Rates (USD base)</h2>
+    <div class="grid grid-2">
+      <div><label>USD→AWG</label><div class="pill" id="usdAwg">—</div></div>
+      <div><label>USD→SRD</label><div class="pill" id="usdSrd">—</div></div>
+    </div>
+    <div class="grid grid-3" style="margin-top:10px">
+      <div><label>Provider</label>
+        <select id="provider">
+          <option value="open.er-api">open.er-api.com</option>
+          <option value="exchangerate.host">exchangerate.host</option>
+          <option value="currency-api">currency-api (jsDelivr)</option>
+          <option value="manual-google">Manual (Google)</option>
+          <option value="manual-wise">Manual (Wise)</option>
+          <option value="manual">Manual (Custom)</option>
+        </select>
+      </div>
+      <div><label class="row" style="align-items:center;gap:8px"><input type="checkbox" id="manualToggle" /> Use manual rates</label></div>
+      <div></div>
+    </div>
+    <div class="grid grid-2" style="margin-top:8px">
+      <div>
+        <label>USD→AWG (manual)</label>
+        <input type="number" step="0.0001" id="manualAwg" />
+      </div>
+      <div>
+        <label>USD→SRD (manual)</label>
+        <input type="number" step="0.0001" id="manualSrd" />
+      </div>
+    </div>
 
-        if (isSecureOrigin) {
-          window.addEventListener('load', function () {
-            navigator.serviceWorker.register('sw.js')
-              .catch(function (err) { show('SW registration failed: ' + err); });
-          });
-        } else {
-          show('Running on insecure origin (' + location.protocol + '); Service Worker is disabled. Open the GitHub Pages URL.');
-        }
+    <div class="grid grid-3" style="margin-top:10px">
+      <div><span class="muted">Updated:</span> <span id="fxUpdated">—</span></div>
+      <div><span class="muted">Source:</span> <span id="fxSource">—</span></div>
+      <div><span class="muted">Source date:</span> <span id="fxSourceDate">—</span></div>
+    </div>
+    <div id="fxError" class="error" style="margin-top:8px"></div>
+  </section>
+
+  <!-- Items list -->
+  <section id="items" class="grid" style="margin-top:14px;gap:14px"></section>
+
+  <div class="footer-note">
+    Notes: AWG defaults to a fixed peg of <b>1.79</b> per USD; override AWG or SRD manually if needed. Numbers are indicative; confirm final landed costs (duties, VAT/BBO/BAZV/BAVP, customs fees) with your vendor/shipper.
+  </div>
+
+</div>
+
+<script>
+(function(){
+  // ---------- constants & state ----------
+  const AWG_PEG = 1.79;
+  const STORAGE_KEY = "axioma_fx_app_state_v1";
+
+  const state = {
+    awg: AWG_PEG,
+    srd: 0,
+    preferredProvider: "open.er-api",
+    manual: { enabled:false, AWG:AWG_PEG, SRD:0 },
+    items: [
+      newItem({ name:"Apple AirPods Max", arubaPriceAwg:1369, amazonPriceUsd:479.99, amazonShippingUsd:100, surinamePriceSrd:21725 })
+    ],
+    fxStatus: { updatedAt:null, source:null, sourceDate:null, error:null },
+  };
+
+  function newId(){ return "id_"+Math.random().toString(36).slice(2)+Date.now(); }
+  function newItem(patch={}){
+    return Object.assign({
+      id:newId(),
+      name:"",
+      arubaPriceAwg:0, arubaExtraAwg:0, arubaTaxPct:0,
+      surinamePriceSrd:0, surinameExtraSrd:0, surinameTaxPct:0,
+      amazonPriceUsd:0, amazonShippingUsd:0, amazonTaxPct:0
+    }, patch);
+  }
+  function parseNum(v){ v=Number(v); return isFinite(v)?v:0; }
+  function fmt(n,c){ try{ return new Intl.NumberFormat(undefined,{style:"currency",currency:c||"AWG"}).format(Number(n)||0); } catch{ return (Number(n)||0).toFixed(2); } }
+
+  // ---------- persistence ----------
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const s = JSON.parse(raw);
+      if(Array.isArray(s.items)) state.items = s.items;
+      if(typeof s.awg==="number") state.awg = s.awg;
+      if(typeof s.srd==="number") state.srd = s.srd;
+      if(s.preferredProvider) state.preferredProvider = s.preferredProvider;
+      if(s.manual) state.manual = s.manual;
+      if(s.fxStatus) state.fxStatus = s.fxStatus;
+    }
+  }catch{}
+
+  function save(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch{}
+  }
+
+  // ---------- FX providers ----------
+  const PROVIDERS = {
+    "open.er-api": {
+      name:"open.er-api.com",
+      url:"https://open.er-api.com/v6/latest/USD",
+      parse: d => ({ SRD: d?.rates?.SRD, date: d?.time_last_update_utc || null })
+    },
+    "exchangerate.host": {
+      name:"exchangerate.host",
+      url:"https://api.exchangerate.host/latest?base=USD&symbols=SRD",
+      parse: d => ({ SRD: d?.rates?.SRD, date: d?.date || null })
+    },
+    "currency-api": {
+      name:"currency-api (jsDelivr)",
+      url:"https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/usd/srd.json",
+      parse: d => ({ SRD: d?.srd, date: d?.date || null })
+    }
+  };
+
+  async function refreshFX(){
+    const errEl = document.getElementById("fxError");
+    errEl.textContent = "";
+    try{
+      if(state.manual.enabled || state.preferredProvider.startsWith("manual")){
+        state.awg = state.manual.AWG || AWG_PEG;
+        state.srd = state.manual.SRD || 0;
+        state.fxStatus = { updatedAt:new Date().toISOString(), source:state.preferredProvider, sourceDate:null, error:null };
+        renderFx();
+        save();
+        renderAll();
+        return;
       }
+      const src = PROVIDERS[state.preferredProvider];
+      const res = await fetch(src.url, { cache:"no-store" });
+      if(!res.ok) throw new Error("HTTP "+res.status+" @ "+src.name);
+      const data = await res.json();
+      const p = src.parse(data);
+      const SRDnum = Number(p.SRD);
+      if(!isFinite(SRDnum) || SRDnum<=0) throw new Error("Missing SRD from "+src.name);
+      state.awg = AWG_PEG;
+      state.srd = SRDnum;
+      state.fxStatus = { updatedAt:new Date().toISOString(), source:src.name, sourceDate:p.date||null, error:null };
+      renderFx(); save(); renderAll();
+    }catch(e){
+      state.fxStatus.error = e && e.message ? e.message : String(e);
+      errEl.textContent = "FX error: "+state.fxStatus.error;
+      renderFx();
+    }
+  }
 
-      // Basic A2HS prompt (desktop/Android; on iOS use Safari → Share → Add to Home Screen)
-      let deferredPrompt = null;
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
+  // ---------- currency math ----------
+  const usdToAwg = (usd) => usd * ((state.manual.enabled?state.manual.AWG:state.awg) || 0);
+  const srdToAwg = (srdAmt) => {
+    const usdToSrd=(state.manual.enabled?state.manual.SRD:state.srd)||0;
+    const usdToAwgRate=(state.manual.enabled?state.manual.AWG:state.awg)||0;
+    if(!usdToSrd || !usdToAwgRate) return 0;
+    return srdAmt * (usdToAwgRate / usdToSrd);
+  };
+
+  function totalsFor(row){
+    const aruba = (parseNum(row.arubaPriceAwg)+parseNum(row.arubaExtraAwg))*(1+parseNum(row.arubaTaxPct)/100);
+    const suriPre = parseNum(row.surinamePriceSrd)+parseNum(row.surinameExtraSrd);
+    const suriname = srdToAwg(suriPre*(1+parseNum(row.surinameTaxPct)/100));
+    const amaPre = parseNum(row.amazonPriceUsd)+parseNum(row.amazonShippingUsd);
+    const amazon = usdToAwg(amaPre*(1+parseNum(row.amazonTaxPct)/100));
+    const cand = [{k:"Aruba",v:aruba},{k:"Suriname",v:suriname},{k:"Amazon",v:amazon}].filter(c=>c.v>0);
+    let cheapest="—", s2=0, sh=0;
+    if(cand.length){
+      const sorted=cand.slice().sort((a,b)=>a.v-b.v);
+      cheapest=sorted[0].k;
+      if(sorted.length>=2){
+        s2 = sorted[1].v - sorted[0].v;
+        sh = sorted[sorted.length-1].v - sorted[0].v;
+      }
+    }
+    return { aruba, suriname, amazon, cheapest, s2, sh };
+  }
+
+  // ---------- rendering ----------
+  function renderFx(){
+    document.getElementById("usdAwg").textContent = (state.manual.enabled?state.manual.AWG:state.awg).toFixed(4);
+    document.getElementById("usdSrd").textContent = (state.manual.enabled?state.manual.SRD:state.srd) ? (state.manual.enabled?state.manual.SRD:state.srd).toFixed(4) : "—";
+    document.getElementById("fxUpdated").textContent = state.fxStatus.updatedAt ? new Date(state.fxStatus.updatedAt).toLocaleString() : "—";
+    document.getElementById("fxSource").textContent = state.fxStatus.source || "—";
+    document.getElementById("fxSourceDate").textContent = state.fxStatus.sourceDate || "—";
+    document.getElementById("provider").value = state.preferredProvider;
+    document.getElementById("manualToggle").checked = state.manual.enabled;
+    document.getElementById("manualAwg").value = state.manual.AWG;
+    document.getElementById("manualSrd").value = state.manual.SRD;
+  }
+
+  function renderItems(){
+    const wrap = document.getElementById("items");
+    wrap.innerHTML = "";
+    state.items.forEach((row)=>{
+      const t = totalsFor(row);
+      const el = document.createElement("div");
+      el.className = "card";
+      el.innerHTML = `
+        <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:6px">
+          <input type="text" value="${esc(row.name)}" placeholder="Item name" data-id="${row.id}" data-key="name" class="name" style="flex:1;margin-right:8px" />
+          <button class="btn btn-outline remove" data-id="${row.id}">Remove</button>
+        </div>
+
+        <div class="grid grid-3" style="margin-top:6px">
+          <div><label>Aruba Price (AWG)</label><input type="number" step="0.01" value="${row.arubaPriceAwg}" data-id="${row.id}" data-key="arubaPriceAwg"></div>
+          <div><label>Aruba Extra (AWG)</label><input type="number" step="0.01" value="${row.arubaExtraAwg}" data-id="${row.id}" data-key="arubaExtraAwg"></div>
+          <div><label>Aruba Tax %</label><input type="number" step="0.1" value="${row.arubaTaxPct}" data-id="${row.id}" data-key="arubaTaxPct"></div>
+        </div>
+
+        <div class="grid grid-3" style="margin-top:6px">
+          <div><label>Suriname Price (SRD)</label><input type="number" step="0.01" value="${row.surinamePriceSrd}" data-id="${row.id}" data-key="surinamePriceSrd"></div>
+          <div><label>Suriname Extra (SRD)</label><input type="number" step="0.01" value="${row.surinameExtraSrd}" data-id="${row.id}" data-key="surinameExtraSrd"></div>
+          <div><label>Suriname Tax %</label><input type="number" step="0.1" value="${row.surinameTaxPct}" data-id="${row.id}" data-key="surinameTaxPct"></div>
+        </div>
+
+        <div class="grid grid-3" style="margin-top:6px">
+          <div><label>Amazon Price (USD)</label><input type="number" step="0.01" value="${row.amazonPriceUsd}" data-id="${row.id}" data-key="amazonPriceUsd"></div>
+          <div><label>Amazon Shipping (USD)</label><input type="number" step="0.01" value="${row.amazonShippingUsd}" data-id="${row.id}" data-key="amazonShippingUsd"></div>
+          <div><label>Amazon Tax %</label><input type="number" step="0.1" value="${row.amazonTaxPct}" data-id="${row.id}" data-key="amazonTaxPct"></div>
+        </div>
+
+        <div class="totals grid grid-4" style="margin-top:10px">
+          <div><div class="muted">Total Aruba (AWG)</div><div><b>${fmt(t.aruba,"AWG")}</b></div></div>
+          <div><div class="muted">Total Suriname (AWG)</div><div><b>${fmt(t.suriname,"AWG")}</b></div></div>
+          <div><div class="muted">Total Amazon (AWG)</div><div><b>${fmt(t.amazon,"AWG")}</b></div></div>
+          <div class="decision">
+            <div class="title">${t.cheapest}</div>
+            <div class="line">Saves ${fmt(t.s2,"AWG")} vs next-best</div>
+            <div class="line">Saves ${fmt(t.sh,"AWG")} vs highest</div>
+          </div>
+        </div>
+      `;
+      wrap.appendChild(el);
+    });
+
+    // wire inputs
+    wrap.querySelectorAll("input").forEach(inp=>{
+      inp.addEventListener("input", (e)=>{
+        const id = e.target.getAttribute("data-id");
+        const key = e.target.getAttribute("data-key");
+        const item = state.items.find(x=>x.id===id);
+        if(!item) return;
+        if(key==="name"){ item.name = e.target.value; }
+        else { item[key] = parseNum(e.target.value); }
+        save(); renderItems();
       });
-      document.getElementById('install').addEventListener('click', async () => {
-        if (!deferredPrompt) {
-          show('On iPhone: use the Share button → Add to Home Screen.');
-          return;
-        }
-        deferredPrompt.prompt();
-        try { await deferredPrompt.userChoice; } catch(_) {}
-        deferredPrompt = null;
+    });
+    // wire remove
+    wrap.querySelectorAll(".remove").forEach(btn=>{
+      btn.addEventListener("click",(e)=>{
+        const id = e.target.getAttribute("data-id");
+        state.items = state.items.filter(x=>x.id!==id);
+        save(); renderItems();
       });
-    })();
-  </script>
+    });
+  }
+
+  function renderAll(){ renderFx(); renderItems(); }
+
+  // ---------- CSV ----------
+  function exportCSV(){
+    const header = ["Name","Aruba Price (AWG)","Aruba Extra (AWG)","Aruba Tax %","Suriname Price (SRD)","Suriname Extra (SRD)","Suriname Tax %","Amazon Price (USD)","Amazon Shipping (USD)","Amazon Tax %","Total Aruba (AWG)","Total Suriname (AWG)","Total Amazon (AWG)","Cheapest","Savings vs next-best (AWG)","Savings vs highest (AWG)"];
+    const rows = state.items.map(it=>{
+      const t = totalsFor(it);
+      return [it.name,it.arubaPriceAwg,it.arubaExtraAwg,it.arubaTaxPct,it.surinamePriceSrd,it.surinameExtraSrd,it.surinameTaxPct,it.amazonPriceUsd,it.amazonShippingUsd,it.amazonTaxPct,t.aruba.toFixed(2),t.suriname.toFixed(2),t.amazon.toFixed(2),t.cheapest,t.s2.toFixed(2),t.sh.toFixed(2)];
+    });
+    const csv = [header,...rows].map(r=> r.map(v => (typeof v==="string" && v.includes(",")) ? '"'+String(v).replace(/"/g,'""')+'"' : v).join(",")).join("\r\n");
+    const blob = new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download="axioma_fx_"+new Date().toISOString().slice(0,10)+".csv"; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ---------- helpers ----------
+  function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+  // ---------- wire controls ----------
+  document.getElementById("btnAdd").addEventListener("click", ()=>{ state.items.push(newItem()); save(); renderItems(); });
+  document.getElementById("btnCSV").addEventListener("click", exportCSV);
+  document.getElementById("btnRefresh").addEventListener("click", refreshFX);
+
+  document.getElementById("provider").addEventListener("change",(e)=>{ state.preferredProvider = e.target.value; save(); });
+  document.getElementById("manualToggle").addEventListener("change",(e)=>{ state.manual.enabled = e.target.checked; save(); });
+  document.getElementById("manualAwg").addEventListener("input",(e)=>{ state.manual.AWG = parseNum(e.target.value); save(); });
+  document.getElementById("manualSrd").addEventListener("input",(e)=>{ state.manual.SRD = parseNum(e.target.value); save(); });
+
+  // initial render + FX fetch
+  renderAll();
+  refreshFX();
+
+  // ---------- SW registration with secure-origin guard ----------
+  (function(){
+    const isSecure = location.protocol==="https:" || location.hostname==="localhost" || location.hostname.endsWith(".github.io");
+    if('serviceWorker' in navigator && isSecure){
+      window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').catch(()=>{}));
+    }
+  })();
+
+})();
+</script>
 </body>
 </html>
